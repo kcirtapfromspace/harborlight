@@ -19,7 +19,7 @@ need_opaque() {
   for bin in opaque opaqued; do
     if ! command -v "$bin" >/dev/null 2>&1; then
       echo "error: $bin not found on PATH" >&2
-      echo "install it with: brew install kcirtapfromspace/tap/opaque" >&2
+      echo "install it with: brew install opaque-dev/tap/opaque" >&2
       exit 1
     fi
   done

@@ -44,7 +44,7 @@ real `~/.opaque` state.
 macOS and Linux. The acts need the released package, nothing from source:
 
 ```sh
-brew install kcirtapfromspace/tap/opaque
+brew install opaque-dev/tap/opaque
 ```
 
 or
