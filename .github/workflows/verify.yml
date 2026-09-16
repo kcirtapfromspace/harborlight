@@ -24,10 +24,21 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y bubblewrap sqlite3
-          # ubuntu-24.04 runners restrict unprivileged user namespaces via
-          # AppArmor; bubblewrap fails with "setting up uid map: Permission
-          # denied" without this.
+          sudo apt-get install -y sqlite3
+          # Opaque 0.4.0 applies its network-deny seccomp filter to bwrap
+          # itself, so bwrap cannot bind the NETLINK_ROUTE socket it needs to
+          # configure loopback in the new network namespace: every
+          # sandbox.exec under a no-network profile fails on Linux when
+          # bubblewrap is present (reported upstream). Keep bwrap absent so
+          # the daemon selects its unshare + landlock + seccomp fallback;
+          # reinstall bubblewrap here once the fix ships.
+          sudo apt-get remove -y bubblewrap || true
+          if command -v bwrap >/dev/null 2>&1; then
+            echo 'bwrap still present; the daemon would pick the broken path' >&2
+            exit 1
+          fi
+          # The unshare fallback still needs unprivileged user namespaces,
+          # which ubuntu-24.04 runners restrict via AppArmor.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Install Opaque (released package)
