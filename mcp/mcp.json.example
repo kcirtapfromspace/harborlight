@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "opaque": {
+      "command": "/opt/homebrew/bin/opaque-mcp",
+      "args": []
+    }
+  }
+}

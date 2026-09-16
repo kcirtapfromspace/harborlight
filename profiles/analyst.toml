@@ -1,0 +1,27 @@
+# Harborlight analyst sandbox profile.
+#
+# The setup script copies this file to $HOME/.opaque/profiles/analyst.toml with
+# __REPO_DIR__ replaced by the absolute path of this checkout. The daemon
+# resolves the secret reference; the CLI never sees the value.
+
+[profile]
+name = "analyst"
+description = "Harborlight analyst sandbox (synthetic data only)"
+project_dir = "__REPO_DIR__"
+extra_read_paths = []
+
+[network]
+# No network access. The synthetic source is a local file.
+allow = []
+
+[secrets]
+# OPAQUE_DEMO_VALUE_SRC is a dummy value exported by the act scripts.
+# Do NOT replace with a real secret.
+HARBORLIGHT_SOURCE_TOKEN = "env:OPAQUE_DEMO_VALUE_SRC"
+
+[env]
+PYTHONDONTWRITEBYTECODE = "1"
+
+[limits]
+timeout_secs = 120
+max_output_bytes = 1048576

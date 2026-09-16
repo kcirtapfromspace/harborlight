@@ -1,0 +1,71 @@
+name: verify
+
+# Every claim in the README runs against the released Opaque package, on a
+# schedule, so the quickstart cannot rot. The CI run uses the insecure
+# auto-approve backend; the transcript must show its audit attribution.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  quickstart:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux sandbox dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap sqlite3
+
+      - name: Install Opaque (released package)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL https://raw.githubusercontent.com/kcirtapfromspace/opaque/main/install.sh \
+            | OPAQUE_INSTALL="$RUNNER_TEMP/bin" sh
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Show versions
+        run: |
+          opaque --version
+          opaqued --version
+
+      - name: Regenerate the synthetic data and check determinism
+        run: |
+          set -euo pipefail
+          python3 data/generate.py
+          git diff --exit-code data/loan_applications.csv
+
+      - name: Run the quickstart (CI mode)
+        run: |
+          set -euo pipefail
+          ./quickstart.sh --ci 2>&1 | tee transcript.txt
+
+      - name: Assert the story happened
+        run: |
+          set -euo pipefail
+          grep -F 'ALLOW (rule: allow-test-noop)' transcript.txt
+          grep -F 'DENY: no matching policy rule' transcript.txt
+          grep -F 'demo_value_123456' transcript.txt
+          grep -F 'unavailable (0 samples)' transcript.txt
+          grep -F 'Sandbox exec succeeded' transcript.txt
+          grep -F 'code: policy_denied' transcript.txt
+          grep -F 'Audit chain intact' transcript.txt
+          grep -F 'TAMPER DETECTED' transcript.txt
+          grep -F 'insecure_backend_active' transcript.txt
+
+      - name: Upload transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transcript-${{ matrix.os }}
+          path: transcript.txt

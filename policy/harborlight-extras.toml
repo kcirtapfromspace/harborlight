@@ -1,0 +1,17 @@
+
+# --- Harborlight quickstart additions ---
+#
+# Appended to the github-secrets preset by the act scripts. One rule: allow
+# sandbox execution for the analyst profile. The daemon classifies sandbox.exec
+# as sensitive output and requires an approval on every call regardless of what
+# a policy rule asks for; this rule states what the daemon enforces anyway.
+
+[[rules]]
+name = "allow-analyst-sandbox"
+operation_pattern = "sandbox.exec"
+allow = true
+client_types = ["agent", "human"]
+
+[rules.approval]
+require = "always"
+factors = ["local_bio"]
