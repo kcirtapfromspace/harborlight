@@ -31,6 +31,10 @@ harborlight_cleanup() {
     wait "$OPAQUED_PID" >/dev/null 2>&1 || true
     OPAQUED_PID=""
   fi
+  # CI keeps the daemon log for diagnosis; the throwaway HOME is still removed.
+  if [[ -n "${HARBORLIGHT_LOG_COPY:-}" && -f "${HARBORLIGHT_DIR:-}/logs/opaqued.log" ]]; then
+    cp "$HARBORLIGHT_DIR/logs/opaqued.log" "$HARBORLIGHT_LOG_COPY" >/dev/null 2>&1 || true
+  fi
   if [[ "${HARBORLIGHT_KEEP:-0}" != "1" && -n "${HARBORLIGHT_DIR:-}" ]]; then
     rm -rf "$HARBORLIGHT_DIR" >/dev/null 2>&1 || true
   fi

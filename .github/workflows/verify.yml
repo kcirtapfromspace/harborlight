@@ -48,7 +48,7 @@ jobs:
       - name: Run the quickstart (CI mode)
         run: |
           set -euo pipefail
-          ./quickstart.sh --ci 2>&1 | tee transcript.txt
+          HARBORLIGHT_LOG_COPY="$PWD/opaqued.log" ./quickstart.sh --ci 2>&1 | tee transcript.txt
 
       - name: Assert the story happened
         run: |
@@ -63,9 +63,29 @@ jobs:
           grep -F 'TAMPER DETECTED' transcript.txt
           grep -F 'insecure_backend_active' transcript.txt
 
+      - name: Diagnose on failure
+        if: failure()
+        run: |
+          echo '--- direct analyst run, unsandboxed (dummy token) ---'
+          HARBORLIGHT_SOURCE_TOKEN=demo_value_123456 python3 agent/analyst.py report \
+            || echo "direct run exit: $?"
+          echo '--- bubblewrap probe ---'
+          if command -v bwrap >/dev/null 2>&1; then
+            bwrap --version || true
+            bwrap --ro-bind / / --dev /dev --proc /proc /bin/true \
+              && echo 'bwrap basic sandbox OK' \
+              || echo "bwrap basic sandbox FAILED: $?"
+          else
+            echo 'bwrap not present'
+          fi
+          echo '--- daemon log tail ---'
+          tail -60 opaqued.log 2>/dev/null || echo 'no daemon log captured'
+
       - name: Upload transcript
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: transcript-${{ matrix.os }}
-          path: transcript.txt
+          path: |
+            transcript.txt
+            opaqued.log
