@@ -89,6 +89,21 @@ jobs:
           fi
           echo '--- daemon log tail ---'
           tail -60 opaqued.log 2>/dev/null || echo 'no daemon log captured'
+          if command -v bwrap >/dev/null 2>&1; then
+            echo '--- replicate opaqued bwrap invocation (stderr visible) ---'
+            PY="$(python3 -c 'import sys; print(sys.executable)')"
+            BWARGS=(--ro-bind / / --dev /dev --proc /proc
+                    --bind "$PWD" "$PWD" --tmpfs /tmp
+                    --unshare-pid --unshare-net --die-with-parent --new-session --)
+            echo "[plain bwrap]"
+            HARBORLIGHT_SOURCE_TOKEN=demo_value_123456 \
+              bwrap "${BWARGS[@]}" "$PY" "$PWD/agent/analyst.py" report \
+              && echo 'plain bwrap OK' || echo "plain bwrap exit: $?"
+            echo "[bwrap under NO_NEW_PRIVS, as opaqued runs it]"
+            HARBORLIGHT_SOURCE_TOKEN=demo_value_123456 \
+              setpriv --no-new-privs bwrap "${BWARGS[@]}" "$PY" "$PWD/agent/analyst.py" report \
+              && echo 'nnp bwrap OK' || echo "nnp bwrap exit: $?"
+          fi
 
       - name: Upload transcript
         if: always()
