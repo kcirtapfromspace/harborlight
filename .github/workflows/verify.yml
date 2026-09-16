@@ -20,26 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux sandbox dependencies
+      - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y sqlite3
-          # Opaque 0.4.0 applies its network-deny seccomp filter to bwrap
-          # itself, so bwrap cannot bind the NETLINK_ROUTE socket it needs to
-          # configure loopback in the new network namespace: every
-          # sandbox.exec under a no-network profile fails on Linux when
-          # bubblewrap is present (reported upstream). Keep bwrap absent so
-          # the daemon selects its unshare + landlock + seccomp fallback;
-          # reinstall bubblewrap here once the fix ships.
-          sudo apt-get remove -y bubblewrap || true
-          if command -v bwrap >/dev/null 2>&1; then
-            echo 'bwrap still present; the daemon would pick the broken path' >&2
-            exit 1
-          fi
-          # The unshare fallback still needs unprivileged user namespaces,
-          # which ubuntu-24.04 runners restrict via AppArmor.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          # No bubblewrap: the acts set sandbox = false on Linux because
+          # Opaque 0.4.0's platform sandbox cannot start under its own
+          # Landlock/seccomp layering (reported upstream). Reinstall
+          # bubblewrap and drop the profile override once the fix ships.
 
       - name: Install Opaque (released package)
         env:
@@ -100,42 +89,6 @@ jobs:
           fi
           echo '--- daemon log tail ---'
           tail -60 opaqued.log 2>/dev/null || echo 'no daemon log captured'
-          if command -v bwrap >/dev/null 2>&1; then
-            echo '--- replicate opaqued bwrap invocation (stderr visible) ---'
-            PY="$(python3 -c 'import sys; print(sys.executable)')"
-            BWARGS=(--ro-bind / / --dev /dev --proc /proc
-                    --bind "$PWD" "$PWD" --tmpfs /tmp
-                    --unshare-pid --unshare-net --die-with-parent --new-session --)
-            echo "[plain bwrap]"
-            HARBORLIGHT_SOURCE_TOKEN=demo_value_123456 \
-              bwrap "${BWARGS[@]}" "$PY" "$PWD/agent/analyst.py" report \
-              && echo 'plain bwrap OK' || echo "plain bwrap exit: $?"
-            echo "[bwrap under NO_NEW_PRIVS, as opaqued runs it]"
-            HARBORLIGHT_SOURCE_TOKEN=demo_value_123456 \
-              setpriv --no-new-privs bwrap "${BWARGS[@]}" "$PY" "$PWD/agent/analyst.py" report \
-              && echo 'nnp bwrap OK' || echo "nnp bwrap exit: $?"
-          fi
-          echo '--- layer isolation: sandbox variants through the daemon ---'
-          (
-            set -euo pipefail
-            export OPAQUE_QUICKSTART_CI=1 HARBORLIGHT_KEEP=1
-            source acts/_lib.sh
-            harborlight_env
-            ensure_initialized
-            sed "s|__REPO_DIR__|$HARBORLIGHT_REPO|; s|name = \"analyst\"|name = \"netallow\"|; s|allow = \[\]|allow = [\"127.0.0.1:9\"]|" \
-              profiles/analyst.toml > "$HOME/.opaque/profiles/netallow.toml"
-            sed "s|__REPO_DIR__|$HARBORLIGHT_REPO|; s|name = \"analyst\"|name = \"nosandbox\"\nsandbox = false|" \
-              profiles/analyst.toml > "$HOME/.opaque/profiles/nosandbox.toml"
-            start_daemon
-            PY="$(resolve_analyst_python)"
-            echo '[netallow: real sandbox, network allow non-empty]'
-            opaque exec --profile netallow -- "$PY" "$HARBORLIGHT_REPO/agent/analyst.py" report || true
-            echo '[nosandbox: platform sandbox disabled, broker path intact]'
-            opaque exec --profile nosandbox -- "$PY" "$HARBORLIGHT_REPO/agent/analyst.py" report || true
-            echo '[daemon log tail]'
-            tail -25 "$HARBORLIGHT_DIR/logs/opaqued.log" || true
-            stop_daemon || true
-          ) || echo 'layer isolation probe failed'
 
       - name: Upload transcript
         if: always()

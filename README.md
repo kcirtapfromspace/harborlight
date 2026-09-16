@@ -224,6 +224,14 @@ classified as an agent, and an agent gets exit code and byte lengths, not the
 approval on every call, no lease. On Linux, skip the `xcrun` line and use
 `python3` directly.
 
+One Linux honesty note. Opaque 0.4.0 applies its Landlock and seccomp
+restrictions to the sandbox wrapper itself, and the wrapper then cannot
+finish its own setup: every platform-sandboxed exec fails on a
+Landlock-capable kernel. We reported it upstream. Until the fix ships,
+the scripts set `sandbox = false` on Linux; the broker path you just
+watched — policy, approval, injection by reference, withheld output,
+the audit record — is unchanged. macOS runs the real seatbelt sandbox.
+
 One more callback. The careless argv from Act 1 is a habit the broker's own
 records used to have:
 

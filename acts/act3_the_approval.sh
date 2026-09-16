@@ -27,6 +27,13 @@ act3_main() {
   # HARBORLIGHT_SOURCE_TOKEN from a daemon-side reference. Your shell does not
   # carry it and the CLI never sees it. Success proves the injection: without
   # the token the analyst exits non-zero.
+  if [[ "$(uname)" != "Darwin" ]]; then
+    echo 'Linux note: this run disables the OS sandbox layer (sandbox = false).'
+    echo 'Opaque 0.4.0 applies Landlock and seccomp to the sandbox wrapper itself,'
+    echo 'which then cannot finish its own setup; reported upstream. Broker'
+    echo 'custody, policy, approval, injection and audit below are unchanged.'
+    echo
+  fi
   # shellcheck disable=SC2016  # banner prints literally; expansion is the bug class we avoid
   echo '$ ANALYST_PYTHON="$(xcrun --find python3)"   # a concrete interpreter; the /usr/bin shim cannot run sandboxed'
   ANALYST_PYTHON="$(resolve_analyst_python)"
