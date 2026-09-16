@@ -9,6 +9,12 @@ The [Opaque](https://github.com/kcirtapfromspace/opaque) quickstart. Opaque is
 not another secrets manager or agent framework. It decides what may pass
 between the two you already have, and proves what did.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.gif">
+  <img src="assets/demo.gif" width="900"
+       alt="Terminal recording: a token leaks, one policy answers allow and deny, a real denial lands in the audit chain, and tampering one row breaks verification at a named record. All values synthetic.">
+</picture>
+
 Harborlight, Northstar and Cedar are fictional organizations. Every metric,
 token and record in this repository is synthetic and labeled as such. This is
 a worked example, and the credit union is a narrative device.
@@ -46,6 +52,12 @@ or
 ```sh
 curl -sSfL https://raw.githubusercontent.com/kcirtapfromspace/opaque/main/install.sh | sh
 ```
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kcirtapfromspace/harborlight)
+
+No local install needed: a codespace comes with Opaque preinstalled. Run
+`./quickstart.sh --ci` there — a codespace has no biometric approver, so
+approvals are synthetic and attributed in the audit record.
 
 Native approvals use Touch ID on macOS and polkit on a Linux desktop. On a
 headless machine, use [CI mode](#ci-mode) and read its caveat first.
@@ -340,12 +352,10 @@ The acts used no external accounts. The same broker, pointed at real work:
    credentials. Then follow the
    [tutorial](https://github.com/kcirtapfromspace/opaque/blob/main/docs/tutorial.md)
    with a disposable token and a test repository.
-2. **Claude Code over MCP.** Copy [mcp/mcp.json.example](mcp/mcp.json.example)
-   to your client's MCP configuration with the absolute path from
-   `command -v opaque-mcp`, and launch the client with the same `HOME` as the
-   daemon. In 0.4.0, `opaque connect` writes a configuration the MCP server
-   rejects; write the file yourself. The MCP path withholds sandbox output
-   from the agent, returning exit code and byte lengths only.
+2. **Claude Code over MCP.** The full walkthrough:
+   [Use Opaque with Claude Code](quickstarts/claude-code-github.md) — wire in
+   [mcp/mcp.json.example](mcp/mcp.json.example), watch zero-credential tool
+   calls, then publish a real GitHub secret the agent never sees.
 3. **Wrap your agent.** `opaque agent run -- your-agent` starts the agent with
    a baseline environment: inherited API keys in your shell do not reach it.
    `--pass-env KEY` forwards exceptions deliberately.
@@ -393,6 +403,9 @@ data/                  synthetic loan-application history and its generator
 profiles/analyst.toml  the sandbox profile (token injected by reference)
 policy/                the one rule appended to the github-secrets preset
 mcp/mcp.json.example   hand-written MCP configuration for Claude Code
+quickstarts/           platform guides: Claude Code with GitHub
+assets/                the terminal recording and how it was made
+.devcontainer/         Codespaces environment with Opaque preinstalled
 ```
 
 `data/generate.py` is deterministic: the numbers in this README are the
