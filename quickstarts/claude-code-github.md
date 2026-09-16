@@ -173,5 +173,5 @@ outside that boundary.
 Steps 1–3 were verified against a live `opaqued` and `opaque-mcp`
 0.4.0+1fc32e3 on 2026-09-16; the JSON outputs above are captured, not
 composed. Step 4 follows the
-[core tutorial](https://github.com/kcirtapfromspace/opaque/blob/main/docs/tutorial.md)
+[core tutorial](https://github.com/opaque-dev/opaque/blob/main/docs/tutorial.md)
 and needs your own disposable token and test repository.

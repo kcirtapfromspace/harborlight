@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/bin"
-          curl -sSfL https://raw.githubusercontent.com/kcirtapfromspace/opaque/main/install.sh \
+          curl -sSfL https://raw.githubusercontent.com/opaque-dev/opaque/main/install.sh \
             | OPAQUE_INSTALL="$RUNNER_TEMP/bin" sh
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 

@@ -1,11 +1,11 @@
 # Harborlight
 
-![verify](https://github.com/kcirtapfromspace/harborlight/actions/workflows/verify.yml/badge.svg)
+![verify](https://github.com/opaque-dev/harborlight/actions/workflows/verify.yml/badge.svg)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 **Approve the work. Keep secrets secret.**
 
-The [Opaque](https://github.com/kcirtapfromspace/opaque) quickstart. Opaque is
+The [Opaque](https://github.com/opaque-dev/opaque) quickstart. Opaque is
 not another secrets manager or agent framework. It decides what may pass
 between the two you already have, and proves what did.
 
@@ -50,10 +50,10 @@ brew install kcirtapfromspace/tap/opaque
 or
 
 ```sh
-curl -sSfL https://raw.githubusercontent.com/kcirtapfromspace/opaque/main/install.sh | sh
+curl -sSfL https://raw.githubusercontent.com/opaque-dev/opaque/main/install.sh | sh
 ```
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kcirtapfromspace/harborlight)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/opaque-dev/harborlight)
 
 No local install needed: a codespace comes with Opaque preinstalled. Run
 `./quickstart.sh --ci` there — a codespace has no biometric approver, so
@@ -309,7 +309,7 @@ Verification checks local audit integrity under its custody assumptions.
 Someone holding the audit HMAC key can forge records; verification cannot
 establish that a compromised broker reported truthfully. In the default
 single-account install this chain is tamper-evident. Under
-[enforced trust-domain custody](https://github.com/kcirtapfromspace/opaque/blob/main/docs/compliance/hardening.md)
+[enforced trust-domain custody](https://github.com/opaque-dev/opaque/blob/main/docs/compliance/hardening.md)
 it hardens into a boundary the agent's account cannot cross.
 
 ## CI mode
@@ -350,7 +350,7 @@ The acts used no external accounts. The same broker, pointed at real work:
 1. **A real GitHub secret.** `opaque github build-manifest` and
    `opaque github publish-manifest --dry-run` preview the flow with zero
    credentials. Then follow the
-   [tutorial](https://github.com/kcirtapfromspace/opaque/blob/main/docs/tutorial.md)
+   [tutorial](https://github.com/opaque-dev/opaque/blob/main/docs/tutorial.md)
    with a disposable token and a test repository.
 2. **Claude Code over MCP.** The full walkthrough:
    [Use Opaque with Claude Code](quickstarts/claude-code-github.md) — wire in
@@ -364,7 +364,7 @@ The acts used no external accounts. The same broker, pointed at real work:
    run it once, then try again to see Opaque block the repeat.
 5. **The evaluation guide.** For the person who signs off on what an agent may
    touch:
-   [Falsify it in fifteen minutes](https://github.com/kcirtapfromspace/opaque/blob/main/docs/evaluation-guide.md).
+   [Falsify it in fifteen minutes](https://github.com/opaque-dev/opaque/blob/main/docs/evaluation-guide.md).
 
 ## What this shows, and what it does not
 
@@ -380,7 +380,7 @@ enrolled approval keys remain trusted. Opaque does not prevent an agent from
 using credentials it can already read through another path.
 
 Opaque holds no certifications today. From the
-[evaluation guide](https://github.com/kcirtapfromspace/opaque/blob/main/docs/evaluation-guide.md),
+[evaluation guide](https://github.com/opaque-dev/opaque/blob/main/docs/evaluation-guide.md),
 what Opaque does not do:
 
 > - No SCIM or IdP group sync. Roles resolve inside the daemon.
@@ -414,5 +414,5 @@ numbers in the checked-in CSV, and CI regenerates the file to prove it.
 ## License
 
 This quickstart is Apache-2.0. Opaque itself is
-[BUSL-1.1](https://github.com/kcirtapfromspace/opaque/blob/main/LICENSE),
+[BUSL-1.1](https://github.com/opaque-dev/opaque/blob/main/LICENSE),
 free for teams of up to 10 developers.
