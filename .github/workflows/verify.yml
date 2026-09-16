@@ -115,6 +115,27 @@ jobs:
               setpriv --no-new-privs bwrap "${BWARGS[@]}" "$PY" "$PWD/agent/analyst.py" report \
               && echo 'nnp bwrap OK' || echo "nnp bwrap exit: $?"
           fi
+          echo '--- layer isolation: sandbox variants through the daemon ---'
+          (
+            set -euo pipefail
+            export OPAQUE_QUICKSTART_CI=1 HARBORLIGHT_KEEP=1
+            source acts/_lib.sh
+            harborlight_env
+            ensure_initialized
+            sed "s|__REPO_DIR__|$HARBORLIGHT_REPO|; s|name = \"analyst\"|name = \"netallow\"|; s|allow = \[\]|allow = [\"127.0.0.1:9\"]|" \
+              profiles/analyst.toml > "$HOME/.opaque/profiles/netallow.toml"
+            sed "s|__REPO_DIR__|$HARBORLIGHT_REPO|; s|name = \"analyst\"|name = \"nosandbox\"\nsandbox = false|" \
+              profiles/analyst.toml > "$HOME/.opaque/profiles/nosandbox.toml"
+            start_daemon
+            PY="$(resolve_analyst_python)"
+            echo '[netallow: real sandbox, network allow non-empty]'
+            opaque exec --profile netallow -- "$PY" "$HARBORLIGHT_REPO/agent/analyst.py" report || true
+            echo '[nosandbox: platform sandbox disabled, broker path intact]'
+            opaque exec --profile nosandbox -- "$PY" "$HARBORLIGHT_REPO/agent/analyst.py" report || true
+            echo '[daemon log tail]'
+            tail -25 "$HARBORLIGHT_DIR/logs/opaqued.log" || true
+            stop_daemon || true
+          ) || echo 'layer isolation probe failed'
 
       - name: Upload transcript
         if: always()
