@@ -232,22 +232,27 @@ act5_main() {
   export BT_PAT="ghp_demo_bounded_task_pat_0000000000"
   export BT_VAULT_TOKEN="demo-vault-token"
 
-  # The GitHub Actions API is a local mock in both modes.
+  # The GitHub Actions API is a local mock in both modes. Allocate the port
+  # first and pass it in — a long-running server handing its port back through a
+  # pipe is racy on slower runners — then probe the real endpoint for readiness.
+  gh_port="$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')"
+  gh_url="http://127.0.0.1:$gh_port"
   # shellcheck disable=SC2016  # banner prints literally
   echo '$ python3 mandate/mock_providers.py &   # local mock GitHub Actions API (dummy values)'
-  python3 "$HARBORLIGHT_REPO/mandate/mock_providers.py" \
-    >"$ACT5_DIR/mock.port" 2>"$ACT5_DIR/logs/mock.log" &
+  python3 "$HARBORLIGHT_REPO/mandate/mock_providers.py" "$gh_port" \
+    >"$ACT5_DIR/logs/mock.log" 2>&1 &
   ACT5_MOCK_PID=$!
-  for _ in $(seq 1 100); do
-    gh_port="$(head -1 "$ACT5_DIR/mock.port" 2>/dev/null || true)"
-    [[ -n "$gh_port" ]] && break
+  local ready=0
+  for _ in $(seq 1 200); do
+    kill -0 "$ACT5_MOCK_PID" 2>/dev/null || break
+    curl -s -o /dev/null "$gh_url/" 2>/dev/null && { ready=1; break; }
     sleep 0.05
   done
-  if [[ -z "${gh_port:-}" ]]; then
-    echo "error: mock provider did not start" >&2
+  if [[ "$ready" != 1 ]]; then
+    echo "error: mock provider did not start; log follows" >&2
+    cat "$ACT5_DIR/logs/mock.log" >&2 2>/dev/null || true
     exit 1
   fi
-  gh_url="http://127.0.0.1:$gh_port"
   echo
 
   if [[ "$mode" == "vault" ]]; then
