@@ -34,6 +34,7 @@ receipt for all of it.
 | 2 — The policy | One readable file answers allow and deny. | `opaque` installed |
 | 3 — The approval | The daemon gates the work. The sandbox gets the token by reference. | a daemon and one approval |
 | 4 — The receipt | A real denial, a verified chain, one tampered row. | the same daemon |
+| 5 — The mandate | A reviewed manifest, a one-shot allowance, replay denied, revoke. | a real Vault, or `--mock` |
 
 Run everything at once with `./quickstart.sh`, or paste the acts below one
 command at a time. The scripts create a throwaway `HOME` and never touch your
@@ -312,6 +313,166 @@ single-account install this chain is tamper-evident. Under
 [enforced trust-domain custody](https://github.com/opaque-dev/opaque/blob/main/docs/compliance/hardening.md)
 it hardens into a boundary the agent's account cannot cross.
 
+## Act 5 — The mandate
+
+Acts 1–4 governed one operation at a time. A **bounded task** governs a whole
+job in advance: a reviewed manifest fixes the exact actions, an allowance, and
+an expiry; approval binds to that manifest's digest; the broker charges the
+allowance once and refuses a replay. This is "keep authority bounded" — the
+agent is handed a mandate, not a standing key.
+
+This act stands up a **real HashiCorp Vault** so the custody is real. The
+featured path needs the `vault` binary:
+
+```sh
+brew install vault      # macOS; on Linux see developer.hashicorp.com/vault/install
+```
+
+Without it, the act falls back to a fully-mocked path (`--act 5` still runs, or
+force it with `--mock`); the fallback shows the same ledger mechanics but cannot
+make the real-custody claim. The GitHub Actions API is always a local mock —
+only the destination effect is faked.
+
+```sh
+./quickstart.sh --act 5
+```
+
+The act starts a throwaway Vault dev server, puts a **dummy** secret into real
+Vault KV v2, and enables bounded tasks in a task-scoped daemon:
+
+```text
+$ vault kv put secret/task-app TOKEN=bt-demo-secret-plaintext
+The plaintext now lives in Vault. Your shell and the agent below never
+carry it; the broker resolves the vault: reference and injects it.
+```
+
+The [manifest](mandate/manifest.json) authorizes exactly one write — publish
+`TASK_SECRET` to a repository, its value pulled from that Vault reference:
+
+```json
+{ "schema_version": 1, "title": "Publish TASK_SECRET to acme/task-widgets",
+  "expires_in_secs": 300,
+  "actions": [ { "repo": "acme/task-widgets", "secret_name": "TASK_SECRET",
+    "value_ref": "vault:secret/data/task-app?version=1#TOKEN",
+    "github_token_ref": "env:BT_PAT" } ] }
+```
+
+Plan it. The broker resolves the repository to a stable id, pins the manifest to
+a digest, and reserves the one-write allowance under your local identity — no
+tenant, no hosted broker:
+
+```sh
+opaque task plan --manifest mandate/manifest.json
+```
+
+```text
+Publish TASK_SECRET to acme/task-widgets
+Task: aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+State: planned | Charged: 0/1 writes
+Digest: 98f79f27ab0ca30c6ce2d6e6a2f243ede323f3b1458520c02944c64c57d6164f
+Expires: 1789628017 (Unix seconds)
+GitHub: http://127.0.0.1:51181
+Vault: http://127.0.0.1:51182
+Approval: not granted
+
+  acme/task-widgets / TASK_SECRET [repository 424242]
+    Source: vault:secret/data/task-app?version=1#TOKEN
+    Slot: aa5741e0-2ce7-4529-bda4-0e201c6e6e7c:01
+    Outcome: not attempted
+    Credential reference: env:BT_PAT
+
+Review the exact scope above, then run: opaque task run aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+```
+
+The digest fixes the manifest; the repository resolves to id `424242`; the slot
+is reserved but `Charged: 0/1` — nothing runs on a plan alone.
+
+Run it once. Approval binds to the digest; the broker charges the slot before it
+dispatches, then calls the provider:
+
+```sh
+opaque task run aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+```
+
+```text
+Publish TASK_SECRET to acme/task-widgets
+Task: aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+State: completed | Charged: 1/1 writes
+Digest: 98f79f27ab0ca30c6ce2d6e6a2f243ede323f3b1458520c02944c64c57d6164f
+Expires: 1789628017 (Unix seconds)
+GitHub: http://127.0.0.1:51181
+Vault: http://127.0.0.1:51182
+Approval: INSECURE TEST APPROVAL at 1789627718 (Unix seconds)
+
+  acme/task-widgets / TASK_SECRET [repository 424242]
+    Source: vault:secret/data/task-app?version=1#TOKEN
+    Slot: aa5741e0-2ce7-4529-bda4-0e201c6e6e7c:01
+    Outcome: API accepted
+    Credential reference: env:BT_PAT
+    Receipt code: api_accepted
+
+GitHub accepted these writes; secret values cannot be read back for verification.
+```
+
+`Charged: 1/1` and `Outcome: API accepted`. Under `--ci` the approval is the
+synthetic `INSECURE TEST APPROVAL`; run it without `--ci` and the same line
+names the real approver behind your Touch ID.
+
+Run it again. The allowance is spent, and a spent allowance is not restored by
+retrying:
+
+```text
+✖  task has already been claimed; inspect its receipt instead of starting another run
+  code: task_unavailable
+(refused: the manifest authorized one write, and it was consumed.
+A spent allowance is not restored by retrying.)
+```
+
+The receipt records what happened without exposing the value:
+
+```sh
+opaque task show aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+```
+
+```text
+Publish TASK_SECRET to acme/task-widgets
+Task: aa5741e0-2ce7-4529-bda4-0e201c6e6e7c
+State: completed | Charged: 1/1 writes
+Digest: 98f79f27ab0ca30c6ce2d6e6a2f243ede323f3b1458520c02944c64c57d6164f
+Approval: INSECURE TEST APPROVAL at 1789627718 (Unix seconds)
+
+  acme/task-widgets / TASK_SECRET [repository 424242]
+    Source: vault:secret/data/task-app?version=1#TOKEN
+    Outcome: API accepted
+    Receipt code: api_accepted
+
+GitHub accepted these writes; secret values cannot be read back for verification.
+```
+
+The receipt is the persisted record of the completed task — same digest, the
+charge, the approver, and the outcome. It names the `vault:` reference, never
+the value it resolved.
+
+A mandate can also be pulled before it runs. Plan a second task, revoke it, and
+watch the run refuse:
+
+```sh
+opaque task revoke <second-task-id>
+opaque task run    <second-task-id>   # refused: task has been revoked
+```
+
+The plaintext never left Vault. Your shell set `value_ref`, not a value; the
+broker resolved it and the agent received a receipt, not a secret. That custody
+is the real claim of this act. What it does **not** prove is a real GitHub
+effect — that API was a local mock. From the
+[bounded-work guide](https://github.com/opaque-dev/opaque/blob/main/docs/bounded-work.md):
+
+> Automated mock-provider and disposable fixtures validate mechanisms; they do
+> not qualify a live repository's credentials, workflow protections, artifact,
+> reviewer installation or business outcome. Qualify those controls for the
+> selected deployment before treating a successful API response as evidence that
+> the task achieved its goal.
+
 ## CI mode
 
 ```sh
@@ -340,8 +501,10 @@ use it in production.
 The [verify workflow](.github/workflows/verify.yml) runs the whole story
 against the released package on Linux and macOS on every push and weekly,
 and asserts the leak, the deny, the sandboxed run, the intact chain, the
-tamper detection, and the synthetic-approver attribution. If this README
-drifts from the product, the badge goes red.
+tamper detection, the synthetic-approver attribution, and the bounded-task
+allowance and revoke. If this README drifts from the product, the badge goes
+red. CI runs Act 5 with `--mock` (no Vault install on the runner); the real
+Vault path is the default when you run it locally.
 
 ## Graduate
 
@@ -396,12 +559,13 @@ what Opaque does not do:
 ## Repository layout
 
 ```text
-quickstart.sh          the four acts in one throwaway environment (--ci for headless)
+quickstart.sh          the five acts in one run (--ci headless, --mock Act 5)
 acts/                  each act, runnable on its own
 agent/analyst.py       the toy agent: report | debug-env
 data/                  synthetic loan-application history and its generator
 profiles/analyst.toml  the sandbox profile (token injected by reference)
 policy/                the one rule appended to the github-secrets preset
+mandate/               Act 5: the bounded-task manifest and the mock GitHub API
 mcp/mcp.json.example   hand-written MCP configuration for Claude Code
 quickstarts/           platform guides: Claude Code with GitHub
 assets/                the terminal recording and how it was made

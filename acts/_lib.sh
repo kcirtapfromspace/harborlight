@@ -31,12 +31,23 @@ harborlight_cleanup() {
     wait "$OPAQUED_PID" >/dev/null 2>&1 || true
     OPAQUED_PID=""
   fi
+  # Act 5 runs its own task daemon, mock provider, and (featured path) a real
+  # Vault dev server in a second throwaway directory. Tear those down too.
+  local pid
+  for pid in "${ACT5_DAEMON_PID:-}" "${ACT5_MOCK_PID:-}" "${ACT5_VAULT_PID:-}"; do
+    if [[ -n "$pid" ]]; then
+      kill "$pid" >/dev/null 2>&1 || true
+      wait "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+  ACT5_DAEMON_PID=""; ACT5_MOCK_PID=""; ACT5_VAULT_PID=""
   # CI keeps the daemon log for diagnosis; the throwaway HOME is still removed.
   if [[ -n "${HARBORLIGHT_LOG_COPY:-}" && -f "${HARBORLIGHT_DIR:-}/logs/opaqued.log" ]]; then
     cp "$HARBORLIGHT_DIR/logs/opaqued.log" "$HARBORLIGHT_LOG_COPY" >/dev/null 2>&1 || true
   fi
-  if [[ "${HARBORLIGHT_KEEP:-0}" != "1" && -n "${HARBORLIGHT_DIR:-}" ]]; then
-    rm -rf "$HARBORLIGHT_DIR" >/dev/null 2>&1 || true
+  if [[ "${HARBORLIGHT_KEEP:-0}" != "1" ]]; then
+    if [[ -n "${HARBORLIGHT_DIR:-}" ]]; then rm -rf "$HARBORLIGHT_DIR" >/dev/null 2>&1 || true; fi
+    if [[ -n "${ACT5_DIR:-}" ]]; then rm -rf "$ACT5_DIR" >/dev/null 2>&1 || true; fi
   fi
 }
 

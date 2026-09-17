@@ -55,9 +55,12 @@ jobs:
           git diff --exit-code data/loan_applications.csv
 
       - name: Run the quickstart (CI mode)
+        # Act 5 runs with --mock: no Vault binary is installed on the runner, so
+        # the fully-stdlib mock path (the feasibility-verified one) keeps CI
+        # deterministic. The real-Vault path is the default for local runs.
         run: |
           set -euo pipefail
-          HARBORLIGHT_LOG_COPY="$PWD/opaqued.log" ./quickstart.sh --ci 2>&1 | tee transcript.txt
+          HARBORLIGHT_LOG_COPY="$PWD/opaqued.log" ./quickstart.sh --ci --mock 2>&1 | tee transcript.txt
 
       - name: Assert the story happened
         run: |
@@ -71,6 +74,11 @@ jobs:
           grep -F 'Audit chain intact' transcript.txt
           grep -F 'TAMPER DETECTED' transcript.txt
           grep -F 'insecure_backend_active' transcript.txt
+          # Act 5 — the bounded-task ledger
+          grep -F 'Act 5 — The mandate' transcript.txt
+          grep -F 'refused: the manifest authorized one write' transcript.txt
+          grep -F 'refused: revocation blocks a task that has not run' transcript.txt
+          grep -F 'INSECURE TEST APPROVAL' transcript.txt
 
       - name: Diagnose on failure
         if: failure()

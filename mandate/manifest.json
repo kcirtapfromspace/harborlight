@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "title": "Publish TASK_SECRET to acme/task-widgets",
+  "expires_in_secs": 300,
+  "actions": [
+    {
+      "repo": "acme/task-widgets",
+      "secret_name": "TASK_SECRET",
+      "value_ref": "vault:secret/data/task-app?version=1#TOKEN",
+      "github_token_ref": "env:BT_PAT"
+    }
+  ]
+}
